@@ -1,5 +1,5 @@
 PYTHON?=python
-SOURCES=codemod_tox setup.py
+SOURCES=codemod_tox tests setup.py
 
 .PHONY: venv
 venv:
@@ -16,7 +16,7 @@ setup:
 
 .PHONY: test
 test:
-	python -m coverage run -m codemod_tox.tests $(TESTOPTS)
+	pytest --cov=codemod_tox
 	python -m coverage report
 
 .PHONY: format
