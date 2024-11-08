@@ -71,7 +71,7 @@ class ToxOptions(ToxBase):
 
 
 @dataclass
-class ToxEnv:
+class ToxEnv(ToxBase):
     """
     A single piece of an envlist, possibly generative.
 
