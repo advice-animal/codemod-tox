@@ -79,6 +79,7 @@ class ToxEnv:
     """
 
     pieces: list[ToxOptions | str]
+    suffix: str
 
     def all(self) -> Generator[str, None, None]:
         locations = [
@@ -159,10 +160,10 @@ class ToxEnv:
                         raise HoistError(f"{o!r} cannot take {prefix!r}")
         else:
             raise HoistError("Ran off end of pieces")
-        return self.__class__(new_pieces)
+        return self.__class__(new_pieces, self.suffix)
 
     @classmethod
-    def parse(self, s: str) -> "ToxEnv":
+    def parse(self, s: str, suffix: str="") -> "ToxEnv":
         pieces: list[ToxOptions | str] = []
         for match in TOX_ENV_TOKEN_RE.finditer(s):
             if match.group("options"):
@@ -171,7 +172,7 @@ class ToxEnv:
                 pieces.append(match.group("literal"))
             else:  # pragma: no cover
                 raise ParseError(f"Bad match {match!r}")
-        return ToxEnv(pieces)
+        return ToxEnv(pieces, suffix)
 
     def __str__(self) -> str:
         return "".join(map(str, self.pieces))
@@ -200,6 +201,7 @@ class ToxEnvlist(ToxBase):
     def parse(cls, s: str) -> "ToxEnvlist":
         pieces = []
         buf = ""
+        default_suffix = "\n"
 
         for match in TOX_ENV_TOKEN_RE.finditer(s):
             # This will double-parse but these strings are typically pretty
@@ -207,7 +209,9 @@ class ToxEnvlist(ToxBase):
             # this should be roughly linear
             if match.group("comma") or match.group("newline"):
                 assert buf
-                pieces.append(ToxEnv.parse(buf))
+                if match.group("comma"):
+                    default_suffix = ", "
+                pieces.append(ToxEnv.parse(buf, match.group(0)))
                 buf = ""
             elif match.group("space"):
                 pass
@@ -215,7 +219,7 @@ class ToxEnvlist(ToxBase):
                 buf += match.group(0)
 
         if buf:
-            pieces.append(ToxEnv.parse(buf))
+            pieces.append(ToxEnv.parse(buf, default_suffix))
 
         return cls(tuple(pieces))
 
@@ -226,5 +230,7 @@ class ToxEnvlist(ToxBase):
         for item, last in _marklast(self.envs):
             buf += str(item)
             if not last:
-                buf += default_suffix
+                if "," in item.suffix:
+                    default_suffix = ", "
+                buf += (item.suffix or default_suffix)
         return buf

@@ -11,11 +11,11 @@ def test_trailing_comma():
     assert tuple(e.all()) == ("a", "b")
     e = ToxEnvlist.parse("a,b,")
     assert tuple(e.all()) == ("a", "b")
-    assert str(e) == "a\nb"
+    assert str(e) == "a,b"
 
     e = ToxEnvlist.parse("a , b , ")
     assert tuple(e.all()) == ("a", "b")
-    assert str(e) == "a\nb"
+    assert str(e) == "a, b"
 
     e = ToxEnvlist.parse("a\nb\n")
     assert tuple(e.all()) == ("a", "b")
@@ -23,4 +23,4 @@ def test_trailing_comma():
 
     e = ToxEnvlist.parse("a,b\nc")
     assert tuple(e.all()) == ("a", "b", "c")
-    assert str(e) == "a\nb\nc"
+    assert str(e) == "a,b\nc"
