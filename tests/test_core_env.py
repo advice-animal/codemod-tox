@@ -49,3 +49,10 @@ def test_hoist_env():
     e = ToxEnv.parse("{py27,py36}-django{15,16}")
     e2 = e.hoist("py")
     assert str(e2) == "py{27,36}-django{15,16}"
+
+
+def test_only():
+    e = ToxEnv.parse("py27")
+    assert e.only("py27")
+    assert not e.only("py2")
+    assert not e.only("py271")
