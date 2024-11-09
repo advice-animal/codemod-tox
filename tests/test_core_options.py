@@ -1,3 +1,4 @@
+import pytest
 from codemod_tox.core import ToxOptions
 
 
@@ -26,3 +27,10 @@ def test_options2():
     o2 = o.removeprefix("3")
     assert tuple(o2.all()) == ("01", "02")
     assert str(o2) == "{01,02}"
+
+
+def test_options3():
+    o = ToxOptions.parse("{cab,bab}")
+    assert str(o.removesuffix("ab")) == "{c,b}"
+    with pytest.raises(AssertionError):
+        o.removesuffix("x")
