@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
-from typing import Generator
+from typing import Callable, Generator
 
 from .exceptions import HoistError, ParseError
 from .parse import TOX_ENV_TOKEN_RE
@@ -13,16 +13,28 @@ class ToxBase:
     def all(self) -> Generator[str, None, None]:  # pragma: no cover
         raise NotImplementedError
 
+    def predicate(self, func: Callable[[str], bool]) -> bool:
+        for x in self.all():
+            if not func(x):
+                return False
+        return True
+
     def startswith(self, prefix: str) -> bool:
         """
         Returns whether all possibilities start with `prefix`.
         """
-        for x in self.all():
-            if not x.startswith(prefix):
-                return False
-        return True
+        return self.predicate(lambda s: s.startswith(prefix))
+
+    def only(self, value: str) -> bool:
+        """
+        Returns whether all possibilities are exactly `value`.
+        """
+        return self.predicate(value.__eq__)
 
     def empty(self) -> bool:
+        """
+        Returns whether all matches are empty-string.
+        """
         return not any(self.all())
 
     def common_prefix(self) -> str:
@@ -40,7 +52,7 @@ class ToxBase:
         raise NotImplementedError
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToxOptions(ToxBase):
     """
     A "generative" piece of a tox env name.
@@ -70,8 +82,8 @@ class ToxOptions(ToxBase):
         return "{%s}" % ",".join(self.options)
 
 
-@dataclass
-class ToxEnv:
+@dataclass(frozen=True)
+class ToxEnv(ToxBase):
     """
     A single piece of an envlist, possibly generative.
 
@@ -177,7 +189,7 @@ class ToxEnv:
         return "".join(map(str, self.pieces))
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToxEnvlist(ToxBase):
     """
     An envlist.
