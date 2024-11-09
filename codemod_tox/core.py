@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import product
-from typing import Callable, Generator
+from typing import Callable, Generator, Optional
 
 from .exceptions import HoistError, ParseError
 from .parse import TOX_ENV_TOKEN_RE
@@ -19,23 +19,28 @@ class ToxBase:
                 return False
         return True
 
+    def only(self, value: str) -> bool:
+        """
+        Returns whether all possibilities are exactly `value`.
+
+        This is mostly a demonstration, you can also use `.one() == value`
+        """
+        return self.predicate(value.__eq__)
+
     def startswith(self, prefix: str) -> bool:
         """
         Returns whether all possibilities start with `prefix`.
         """
         return self.predicate(lambda s: s.startswith(prefix))
 
-    def only(self, value: str) -> bool:
+    def endswith(self, suffix: str) -> bool:
         """
-        Returns whether all possibilities are exactly `value`.
+        Returns whether all possibilities end with `suffix`.
         """
-        return self.predicate(value.__eq__)
+        return self.predicate(lambda s: s.endswith(suffix))
 
-    def empty(self) -> bool:
-        """
-        Returns whether all matches are empty-string.
-        """
-        return not any(self.all())
+    def __bool__(self) -> bool:
+        return any(self.all())
 
     def common_prefix(self) -> str:
         prev = None
@@ -46,6 +51,15 @@ class ToxBase:
                 prev = _common_prefix(env, prev)
         assert prev is not None  # 0 options?
         return prev
+
+    def one(self) -> str:
+        """
+        Returns the string if only one string matches
+        """
+        s = set(self.all())
+        if len(s) == 1:
+            return list(s)[0]
+        raise ValueError("Multiple matches")
 
     @classmethod
     def parse(cls, s: str) -> "ToxBase":  # pragma: no cover
@@ -68,9 +82,20 @@ class ToxOptions(ToxBase):
     def all(self) -> Generator[str, None, None]:
         yield from self.options
 
+    def addprefix(self, prefix: str) -> "ToxOptions":
+        return self.__class__(tuple(prefix + x for x in self.options))
+
     def removeprefix(self, prefix: str) -> "ToxOptions":
         assert self.startswith(prefix)
         return self.__class__(tuple(x[len(prefix) :] for x in self.options))
+
+    def addsuffix(self, suffix: str) -> "ToxOptions":
+        return self.__class__(tuple(x + suffix for x in self.options))
+
+    def removesuffix(self, suffix: str) -> "ToxOptions":
+        assert suffix
+        assert self.endswith(suffix)
+        return self.__class__(tuple(x[: -len(suffix)] for x in self.options))
 
     @classmethod
     def parse(self, s: str) -> "ToxOptions":
@@ -90,7 +115,7 @@ class ToxEnv(ToxBase):
     e.g. `py{37,38}-tests` or `{a,b}-{c,d}`
     """
 
-    pieces: list[ToxOptions | str]
+    pieces: tuple[ToxOptions | str, ...]
 
     def all(self) -> Generator[str, None, None]:
         locations = [
@@ -129,49 +154,127 @@ class ToxEnv(ToxBase):
         assert working_set is not None
         return working_set
 
+    def _bucket(self) -> tuple[str, Optional[ToxOptions], str]:
+        """
+        Split the ToxEnv into
+
+        literal, [option, literal]
+        """
+        left: str = ""
+        middle = None
+        right: str = ""
+
+        for p in self.pieces:
+            if isinstance(p, str):
+                if middle:
+                    right += p
+                else:
+                    left += p
+            else:
+                try:
+                    one = p.one()
+                except ValueError:
+                    if middle:
+                        raise HoistError(">1 ToxOption involved")
+                    middle = p  # TODO copy?
+                else:
+                    if middle:
+                        right += one
+                    else:
+                        left += one
+
+        return (left, middle, right)
+
     def hoist(self, prefix: str) -> "ToxEnv":
+        try:
+            return self._hoist_simple(prefix)
+        except HoistError:
+            return self._hoist_difficult(prefix)
+
+    def _hoist_simple(self, prefix: str) -> "ToxEnv":
+        """
+        Like hoist but only works on a bucketed env
+        """
+        left, middle, right = self._bucket()
+        if middle is None:
+            middle = ToxOptions(("",))
+        if not left.startswith(prefix):
+            raise HoistError("Does not start with prefix")
+        pos = len(prefix)
+        left, middle = left[:pos], middle.addprefix(left[pos:])
+        candidates: list[ToxOptions | str] = [x for x in (left, middle, right) if x]  # type: ignore
+        return self.__class__(tuple(candidates))
+
+    def _hoist_difficult(self, prefix: str) -> "ToxEnv":
         """
         Moves a common prefix from options into a string.
         """
-        new_pieces = []
-        for i, o in enumerate(self.pieces):
-            if isinstance(o, str):
-                if o.startswith(prefix):  # len(o) >= len(prefix); we're done
-                    new_pieces.extend(self.pieces[i:])
-                    break
-                elif prefix.startswith(o):  # len(prefix) >= len(o)
-                    prefix = prefix[len(o) :]
-                    new_pieces.append(o)
+        if not self.startswith(prefix):
+            raise HoistError("Does not start with prefix")
+        new_pieces: list[ToxOptions | str] = []
+        it = iter(self.pieces)
+        for p in it:
+            if p.startswith(prefix):
+                # need to split
+                new_pieces.append(prefix)
+                rest = p.removeprefix(prefix)
+                if rest:
+                    new_pieces.append(rest)
+                break
+            elif isinstance(p, str):
+                if prefix.startswith(p):
+                    new_pieces.append(p)
+                    prefix = prefix.removeprefix(p)
                 else:
-                    raise HoistError(f"{o!r} cannot take {prefix!r}")
+                    raise HoistError("Unexpected 1")
             else:
-                assert isinstance(o, ToxOptions)
-                if o.startswith(prefix):
-                    new_o = o.removeprefix(prefix)
-                    # TODO if new_pieces and new_pieces[-1] is str new_pieces[-1] += prefix
-                    new_pieces.append(prefix)
-                    if not new_o.empty():
-                        new_pieces.append(new_o)
-                    new_pieces.extend(self.pieces[i + 1 :])
-                    break
+                assert isinstance(p, ToxOptions)
+                try:
+                    one = p.one()
+                except ValueError:
+                    raise HoistError("Unexpected 2")
                 else:
-                    # The only time this is likely to help is with degenerate
-                    # options like those that are unnecessary like {x} [no
-                    # comma] or {x,x} (duplicated)
-                    c = o.common_prefix()
-                    com = min(len(c), len(prefix))
-                    if c[:com] == prefix[:com]:
-                        new_o = o.removeprefix(c[:com])
-                        if new_o.empty():
-                            new_pieces.append(c[:com])
-                            prefix = prefix[com:]
-                        else:
-                            raise HoistError(f"Leftover nonmatched {prefix!r}")
-                    else:
-                        raise HoistError(f"{o!r} cannot take {prefix!r}")
+                    new_pieces.append(one)
+                    prefix = prefix.removeprefix(one)
+                    if not prefix:
+                        break
+        new_pieces.extend(x for x in it if x)
+        return self.__class__(tuple(new_pieces))
+
+    def add(self, value: str) -> "ToxEnv":
+        """
+        Modifies in place
+        """
+        left, middle, right = self._bucket()
+        if middle is None:
+            middle = ToxOptions(("",))
+
+        for i in range(len(value)):
+            if i >= len(left):
+                break
+            if value[i] != left[i]:
+                break
         else:
-            raise HoistError("Ran off end of pieces")
-        return self.__class__(new_pieces)
+            i = len(value)
+
+        for j in range(len(value) - i):
+            if j >= len(right):
+                break
+            if value[-j - 1] != right[-j - 1]:
+                break
+        else:
+            j = len(right)
+
+        # N.b. Have to be careful because j can be zero
+        left, middle = left[:i], middle.addprefix(left[i:])
+        middle, right = (
+            middle.addsuffix(right[: len(right) - j]),
+            right[len(right) - j :],
+        )
+        value = value[i : len(value) - j]
+
+        middle = ToxOptions(middle.options + (value,))
+        return self.__class__((left, middle, right))
 
     @classmethod
     def parse(self, s: str) -> "ToxEnv":
@@ -183,7 +286,7 @@ class ToxEnv(ToxBase):
                 pieces.append(match.group("literal"))
             else:  # pragma: no cover
                 raise ParseError(f"Bad match {match!r}")
-        return ToxEnv(pieces)
+        return ToxEnv(tuple(pieces))
 
     def __str__(self) -> str:
         return "".join(map(str, self.pieces))

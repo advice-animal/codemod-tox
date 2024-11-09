@@ -18,3 +18,7 @@ def _common_prefix(a: str, b: str) -> str:
             break
         buf += c1
     return buf
+
+
+def _common_suffix(a: str, b: str) -> str:
+    return _common_prefix(a[::-1], b[::-1])[::-1]

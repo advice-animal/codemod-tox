@@ -1,5 +1,5 @@
 import pytest
-from codemod_tox.core import HoistError, ToxEnv
+from codemod_tox.core import HoistError, ToxEnv, ToxOptions
 
 
 def test_env():
@@ -56,3 +56,40 @@ def test_only():
     assert e.only("py27")
     assert not e.only("py2")
     assert not e.only("py271")
+
+
+def test_add_env():
+    e = ToxEnv.parse("py38")
+    e = e.add("py39")
+    assert str(e) == "py3{8,9}"
+    e = e.add("py310")
+    assert str(e) == "py3{8,9,10}"
+    e = e.add("py")
+    assert str(e) == "py{38,39,310,}"
+    e = e.add("z")
+    assert str(e) == "{py38,py39,py310,py,z}"
+
+
+def test_add_env2():
+    e = ToxEnv.parse("py38")
+    # assert str(e) == "{py,}38"
+    assert str(e.add("38")) == "{py38,38}"  # sub-optimal
+
+
+def test_add_env3():
+    e = ToxEnv.parse("py{38,39}-foo")
+    assert str(e.add("py310-foo")) == "py{38,39,310}-foo"
+
+
+def test_add_env4():
+    e = ToxEnv.parse("py{38,39}-foo")
+    assert str(e.add("py310-bar")) == "py{38-foo,39-foo,310-bar}"
+
+
+def test_bucket():
+    e = ToxEnv.parse("py38")
+    assert e._bucket() == ("py38", None, "")
+    e = ToxEnv.parse("py{38,39}")
+    assert e._bucket() == ("py", ToxOptions(("38", "39")), "")
+    e = ToxEnv.parse("pyx{38,39}{x}foo")
+    assert e._bucket() == ("pyx", ToxOptions(("38", "39")), "xfoo")
