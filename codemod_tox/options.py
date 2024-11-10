@@ -26,9 +26,19 @@ class ToxOptions(ToxBase):
         assert self.options
         yield from self.options
 
+    def addprefix(self, prefix: str) -> "ToxOptions":
+        return self.__class__(tuple(prefix + x for x in self.options))
+
     def removeprefix(self, prefix: str) -> "ToxOptions":
         assert self.startswith(prefix)
         return self.__class__(tuple(x[len(prefix) :] for x in self.options))
+
+    def addsuffix(self, suffix: str) -> "ToxOptions":
+        return self.__class__(tuple(x + suffix for x in self.options))
+
+    def removesuffix(self, suffix: str) -> "ToxOptions":
+        assert self.endswith(suffix)
+        return self.__class__(tuple(x[: -len(suffix)] for x in self.options))
 
     @classmethod
     def parse(cls, s: str) -> "ToxOptions":

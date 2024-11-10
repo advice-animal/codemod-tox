@@ -30,7 +30,7 @@ class ToxEnv(ToxBase):
             # only literals, if there aren't locations
             yield "".join(self.pieces)  # type: ignore[arg-type]
         else:
-            factor_locations, factor_inputs = list(
+            option_locations, option_inputs = list(
                 zip(
                     *[
                         (i, f.options)
@@ -39,8 +39,8 @@ class ToxEnv(ToxBase):
                     ]
                 )
             )
-            for p in product(*factor_inputs):
-                r = dict(zip(factor_locations, p))
+            for p in product(*option_inputs):
+                r = dict(zip(option_locations, p))
                 yield "".join([r.get(i, x) for i, x in enumerate(self.pieces)])
 
     def common_factors(self) -> set[str]:
@@ -100,6 +100,76 @@ class ToxEnv(ToxBase):
         else:
             raise HoistError("Ran off end of pieces")
         return self.__class__(tuple(new_pieces))
+
+    def _bucket(self) -> tuple[str, ToxOptions, str]:
+        """
+        If this Env is a simple enough expression, break it into pieces.
+
+        For `py{38,39}-tests` will return `("py", ToxOptions(("38", "39")),
+        "-tests")` -- that is, a left and right literal, and an option in the
+        middle.  If this consists only of a literal, the middle and right ones
+        will be falsy (but not None).
+
+        Otherwise raises `HoistError`.
+        """
+        left: str = ""
+        middle = ToxOptions(("",))
+        right: str = ""
+
+        for p in self.pieces:
+            if isinstance(p, str):
+                if middle:
+                    right += p
+                else:
+                    left += p
+            else:
+                try:
+                    one = p.one()
+                except ValueError:
+                    if middle:
+                        raise HoistError(">1 ToxOption involved")
+                    middle = p  # frozen, so this is fine
+                else:
+                    if middle:
+                        right += one
+                    else:
+                        left += one
+
+        return (left, middle, right)
+
+    def __or__(self, value: str) -> "ToxEnv":
+        """
+        Adds this match, may reformat where curlies end up.
+        """
+        left, middle, right = self._bucket()
+
+        for i in range(len(value)):
+            if i >= len(left):
+                break
+            if value[i] != left[i]:
+                break
+        else:
+            i = len(value)
+
+        for j in range(len(value) - i):
+            if j >= len(right):
+                break
+            if value[-j - 1] != right[-j - 1]:
+                break
+        else:
+            j = len(right)
+
+        # N.b. Have to be careful because j can be zero
+        left, middle = left[:i], middle.addprefix(left[i:])
+        middle, right = (
+            middle.addsuffix(right[: len(right) - j]),
+            right[len(right) - j :],
+        )
+        value = value[i : len(value) - j]
+
+        middle = ToxOptions(middle.options + (value,))
+        pieces: list[ToxOptions | str] = [x for x in (left, middle, right) if x]  # type: ignore
+        return self.__class__(tuple(pieces))
 
     @classmethod
     def parse(self, s: str) -> "ToxEnv":

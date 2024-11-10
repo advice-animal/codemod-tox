@@ -29,6 +29,27 @@ class ToxBase:
         """
         return self.map_all(lambda x: x.startswith(prefix))
 
+    def endswith(self, suffix: str) -> bool:
+        """
+        Returns whether all possibilities end with `suffix`.
+        """
+        return self.map_all(lambda x: x.endswith(suffix))
+
+    def only(self, value: str) -> bool:
+        """
+        Returns whether all possibilities are exactly `value`.
+        """
+        return self.map_all(value.__eq__)
+
+    def one(self) -> str:
+        """
+        Returns the string if only one string matches, otherwise raise ValueError.
+        """
+        s = set(self)
+        if len(s) == 1:
+            return next(iter(s))
+        raise ValueError(f"Multiple matches: {s}")
+
     def fold(self, func: Callable[[str, str], str]) -> str:
         """Like reduce"""
         prev = None

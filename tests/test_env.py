@@ -1,5 +1,6 @@
 import pytest
 from codemod_tox.env import HoistError, ToxEnv
+from codemod_tox.options import ToxOptions
 
 
 def test_env():
@@ -49,3 +50,29 @@ def test_hoist_env():
     e = ToxEnv.parse("{py27,py36}-django{15,16}")
     e2 = e.hoist("py")
     assert str(e2) == "py{27,36}-django{15,16}"
+
+
+def test_bucket():
+    assert ToxEnv.parse("abc")._bucket() == ("abc", ToxOptions(("",)), "")
+    assert ToxEnv.parse("a{b}")._bucket() == ("ab", ToxOptions(("",)), "")
+    assert ToxEnv.parse("{a,b}{c}d")._bucket() == ("", ToxOptions(("a", "b")), "cd")
+    assert ToxEnv.parse("{a,b,c}")._bucket() == ("", ToxOptions(("a", "b", "c")), "")
+    assert ToxEnv.parse("x{a,b,c}y")._bucket() == (
+        "x",
+        ToxOptions(("a", "b", "c")),
+        "y",
+    )
+    with pytest.raises(HoistError):
+        ToxEnv.parse("{a,b}-{c,d}")._bucket()
+
+
+def test_or():
+    assert str(ToxEnv.parse("py37") | "py38") == "py3{7,8}"
+    assert str(ToxEnv.parse("py37") | "py38" | "py39") == "py3{7,8,9}"
+    assert str(ToxEnv.parse("py37") | "py38" | "py27") == "py{37,38,27}"
+    assert str(ToxEnv.parse("py37") | "py") == "py{37,}"
+    assert str(ToxEnv.parse("{a,b}cd") | "cd") == "{a,b,}cd"
+    assert str(ToxEnv.parse("{a,b}cd") | "xd") == "{ac,bc,x}d"
+    # TODO requires trying with remaining left -> right if no right
+    # This currently works but isn't minimal
+    # assert str(ToxEnv.parse("acd") | "cd") == "{a,}cd"
