@@ -4,13 +4,13 @@ from codemod_tox.env import HoistError, ToxEnv
 
 def test_env():
     e = ToxEnv.parse("py3{8,9,10}")
-    assert tuple(e.all()) == ("py38", "py39", "py310")
+    assert tuple(e) == ("py38", "py39", "py310")
     assert str(e) == "py3{8,9,10}"
 
 
 def test_multi_factor_env():
     e = ToxEnv.parse("{py27,py36}-django{15,16}")
-    assert tuple(e.all()) == (
+    assert tuple(e) == (
         "py27-django15",
         "py27-django16",
         "py36-django15",

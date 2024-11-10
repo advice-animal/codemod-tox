@@ -6,10 +6,9 @@ from typing import Generator
 from .base import ToxBase
 from .env import ToxEnv
 from .parse import TOX_ENV_TOKEN_RE
-from .utils import _marklast
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToxEnvlist(ToxBase):
     """
     An envlist.
@@ -18,15 +17,15 @@ class ToxEnvlist(ToxBase):
 
     Although both comma and newline separated are supported during parsing,
     only newline separated will be output with `str()`.  Check that
-    set(a.all()) != set(b.all()) before changing a configuration value to avoid
+    set(a) != set(b) before changing a configuration value to avoid
     (one-time) churn.
     """
 
     envs: tuple[ToxEnv, ...]
 
-    def all(self) -> Generator[str, None, None]:
+    def __iter__(self) -> Generator[str, None, None]:
         for e in self.envs:
-            yield from e.all()
+            yield from iter(e)
 
     @classmethod
     def parse(cls, s: str) -> "ToxEnvlist":
@@ -52,11 +51,4 @@ class ToxEnvlist(ToxBase):
         return cls(tuple(pieces))
 
     def __str__(self) -> str:
-        buf = ""
-        default_suffix = "\n"
-
-        for item, last in _marklast(self.envs):
-            buf += str(item)
-            if not last:
-                buf += default_suffix
-        return buf
+        return "\n".join(str(x) for x in self.envs)

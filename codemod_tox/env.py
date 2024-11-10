@@ -10,7 +10,7 @@ from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToxEnv(ToxBase):
     """
     A single piece of an envlist, possibly generative.
@@ -18,9 +18,9 @@ class ToxEnv(ToxBase):
     e.g. `py{37,38}-tests` or `{a,b}-{c,d}`
     """
 
-    pieces: list[ToxOptions | str]
+    pieces: tuple[ToxOptions | str, ...]
 
-    def all(self) -> Generator[str, None, None]:
+    def __iter__(self) -> Generator[str, None, None]:
         locations = [
             (i, f.options)
             for (i, f) in enumerate(self.pieces)
@@ -48,7 +48,7 @@ class ToxEnv(ToxBase):
         Returns the set of factors contained in all envs
         """
         working_set: set[str] | None = None
-        for env in self.all():
+        for env in self:
             factors = set(env.split("-"))
             if working_set is None:
                 working_set = factors
@@ -61,7 +61,7 @@ class ToxEnv(ToxBase):
         """
         Moves a common prefix from options into a string.
         """
-        new_pieces = []
+        new_pieces: list[ToxOptions | str] = []
         for i, o in enumerate(self.pieces):
             if isinstance(o, str):
                 if o.startswith(prefix):  # len(o) >= len(prefix); we're done
@@ -78,7 +78,7 @@ class ToxEnv(ToxBase):
                     new_o = o.removeprefix(prefix)
                     # TODO if new_pieces and new_pieces[-1] is str new_pieces[-1] += prefix
                     new_pieces.append(prefix)
-                    if not new_o.empty():
+                    if new_o:
                         new_pieces.append(new_o)
                     new_pieces.extend(self.pieces[i + 1 :])
                     break
@@ -90,7 +90,7 @@ class ToxEnv(ToxBase):
                     com = min(len(c), len(prefix))
                     if c[:com] == prefix[:com]:
                         new_o = o.removeprefix(c[:com])
-                        if new_o.empty():
+                        if not new_o:
                             new_pieces.append(c[:com])
                             prefix = prefix[com:]
                         else:
@@ -99,7 +99,7 @@ class ToxEnv(ToxBase):
                         raise HoistError(f"{o!r} cannot take {prefix!r}")
         else:
             raise HoistError("Ran off end of pieces")
-        return self.__class__(new_pieces)
+        return self.__class__(tuple(new_pieces))
 
     @classmethod
     def parse(self, s: str) -> "ToxEnv":
@@ -111,7 +111,7 @@ class ToxEnv(ToxBase):
                 pieces.append(match.group("literal"))
             else:  # pragma: no cover
                 raise ParseError(f"Bad match {match!r}")
-        return ToxEnv(pieces)
+        return ToxEnv(tuple(pieces))
 
     def __str__(self) -> str:
         return "".join(map(str, self.pieces))

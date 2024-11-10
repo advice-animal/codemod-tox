@@ -6,7 +6,7 @@ from typing import Generator
 from .base import ToxBase
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToxOptions(ToxBase):
     """
     A "generative" piece of a tox env name.
@@ -15,11 +15,15 @@ class ToxOptions(ToxBase):
     Whitespace is ignored when parsing, but always output without it.
 
     e.g. `{a , b }` -> `{a,b}`
+
+    Note that `options` should never be an empty tuple, even when parsing `{}`
+    it should be `("",)` -- one item, which is empty string.
     """
 
     options: tuple[str, ...]
 
-    def all(self) -> Generator[str, None, None]:
+    def __iter__(self) -> Generator[str, None, None]:
+        assert self.options
         yield from self.options
 
     def removeprefix(self, prefix: str) -> "ToxOptions":
