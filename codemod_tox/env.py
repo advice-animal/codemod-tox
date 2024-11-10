@@ -43,6 +43,12 @@ class ToxEnv(ToxBase):
                 r = dict(zip(option_locations, p))
                 yield "".join([r.get(i, x) for i, x in enumerate(self.pieces)])
 
+    def matches(self, other: str) -> bool:
+        factors = set(other.split("-"))
+        return self.map_any(other.__eq__) or self.map_any(
+            lambda x: bool(factors & set(x.split("-")))
+        )
+
     def common_factors(self) -> set[str]:
         """
         Returns the set of factors contained in all envs
