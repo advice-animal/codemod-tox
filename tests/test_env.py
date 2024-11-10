@@ -1,5 +1,5 @@
 import pytest
-from codemod_tox.core import HoistError, ToxEnv
+from codemod_tox.env import HoistError, ToxEnv
 
 
 def test_env():

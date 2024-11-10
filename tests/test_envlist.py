@@ -1,4 +1,4 @@
-from codemod_tox.core import ToxEnvlist
+from codemod_tox.envlist import ToxEnvlist
 
 
 def test_envlist():

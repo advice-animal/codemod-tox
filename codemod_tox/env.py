@@ -4,74 +4,14 @@ from dataclasses import dataclass
 from itertools import product
 from typing import Generator
 
+from .base import ToxBase
 from .exceptions import HoistError, ParseError
+from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
-from .utils import _common_prefix, _marklast
-
-
-class ToxBase:
-    def all(self) -> Generator[str, None, None]:  # pragma: no cover
-        raise NotImplementedError
-
-    def startswith(self, prefix: str) -> bool:
-        """
-        Returns whether all possibilities start with `prefix`.
-        """
-        for x in self.all():
-            if not x.startswith(prefix):
-                return False
-        return True
-
-    def empty(self) -> bool:
-        return not any(self.all())
-
-    def common_prefix(self) -> str:
-        prev = None
-        for env in self.all():
-            if prev is None:
-                prev = env
-            else:
-                prev = _common_prefix(env, prev)
-        assert prev is not None  # 0 options?
-        return prev
-
-    @classmethod
-    def parse(cls, s: str) -> "ToxBase":  # pragma: no cover
-        raise NotImplementedError
 
 
 @dataclass
-class ToxOptions(ToxBase):
-    """
-    A "generative" piece of a tox env name.
-
-    These work differently than shell expansion, and notably can't be nested.
-    Whitespace is ignored when parsing, but always output without it.
-
-    e.g. `{a , b }` -> `{a,b}`
-    """
-
-    options: tuple[str, ...]
-
-    def all(self) -> Generator[str, None, None]:
-        yield from self.options
-
-    def removeprefix(self, prefix: str) -> "ToxOptions":
-        assert self.startswith(prefix)
-        return self.__class__(tuple(x[len(prefix) :] for x in self.options))
-
-    @classmethod
-    def parse(self, s: str) -> "ToxOptions":
-        assert s[0] == "{"
-        assert s[-1] == "}"
-        return ToxOptions(tuple(i.strip() for i in s[1:-1].split(",")))
-
-    def __str__(self) -> str:
-        return "{%s}" % ",".join(self.options)
-
-
-@dataclass
-class ToxEnv:
+class ToxEnv(ToxBase):
     """
     A single piece of an envlist, possibly generative.
 
@@ -175,56 +115,3 @@ class ToxEnv:
 
     def __str__(self) -> str:
         return "".join(map(str, self.pieces))
-
-
-@dataclass
-class ToxEnvlist(ToxBase):
-    """
-    An envlist.
-
-    e.g. `py{37,38}-tests, coverage, lint`
-
-    Although both comma and newline separated are supported during parsing,
-    only newline separated will be output with `str()`.  Check that
-    set(a.all()) != set(b.all()) before changing a configuration value to avoid
-    (one-time) churn.
-    """
-
-    envs: tuple[ToxEnv, ...]
-
-    def all(self) -> Generator[str, None, None]:
-        for e in self.envs:
-            yield from e.all()
-
-    @classmethod
-    def parse(cls, s: str) -> "ToxEnvlist":
-        pieces = []
-        buf = ""
-
-        for match in TOX_ENV_TOKEN_RE.finditer(s):
-            # This will double-parse but these strings are typically pretty
-            # trivial and we've restricted the character set significantly so
-            # this should be roughly linear
-            if match.group("comma") or match.group("newline"):
-                assert buf
-                pieces.append(ToxEnv.parse(buf))
-                buf = ""
-            elif match.group("space"):
-                pass
-            else:
-                buf += match.group(0)
-
-        if buf:
-            pieces.append(ToxEnv.parse(buf))
-
-        return cls(tuple(pieces))
-
-    def __str__(self) -> str:
-        buf = ""
-        default_suffix = "\n"
-
-        for item, last in _marklast(self.envs):
-            buf += str(item)
-            if not last:
-                buf += default_suffix
-        return buf

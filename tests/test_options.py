@@ -1,4 +1,4 @@
-from codemod_tox.core import ToxOptions
+from codemod_tox.options import ToxOptions
 
 
 def test_options_roundtrip():
