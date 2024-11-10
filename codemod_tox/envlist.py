@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generator
+from typing import Callable, Generator, Optional
 
 from .base import ToxBase
 from .env import ToxEnv
+from .exceptions import NoMatch
 from .parse import TOX_ENV_TOKEN_RE
 
 
@@ -26,6 +27,31 @@ class ToxEnvlist(ToxBase):
     def __iter__(self) -> Generator[str, None, None]:
         for e in self.envs:
             yield from iter(e)
+
+    def changefirst(
+        self,
+        predicate: Callable[[ToxEnv], bool],
+        mapper: Callable[[ToxEnv], Optional[ToxEnv]],
+    ) -> "ToxEnvlist":
+        """
+        Takes two functions to pick an env and modify it; None means delete it from the envlist.
+
+        Can raise NoMatch if the predicate never matches.
+        """
+        new_envs: list[ToxEnv] = []
+        it = iter(self.envs)
+        for i in it:
+            if predicate(i):
+                new = mapper(i)
+                if new is not None:
+                    new_envs.append(new)
+                break
+            else:
+                new_envs.append(i)
+        else:
+            raise NoMatch
+        new_envs.extend(it)
+        return self.__class__(tuple(new_envs))
 
     @classmethod
     def parse(cls, s: str) -> "ToxEnvlist":

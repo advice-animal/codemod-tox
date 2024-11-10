@@ -4,3 +4,11 @@ class ParseError(SyntaxError):
 
 class HoistError(ValueError):
     pass
+
+
+class NoMatch(Exception):
+    pass
+
+
+class EmptyNow(Exception):
+    pass
