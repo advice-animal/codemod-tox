@@ -73,9 +73,8 @@ def test_or():
     assert str(ToxEnv.parse("py37") | "py") == "py{37,}"
     assert str(ToxEnv.parse("{a,b}cd") | "cd") == "{a,b,}cd"
     assert str(ToxEnv.parse("{a,b}cd") | "xd") == "{ac,bc,x}d"
-    # TODO requires trying with remaining left -> right if no right
-    # This currently works but isn't minimal
-    # assert str(ToxEnv.parse("acd") | "cd") == "{a,}cd"
+    assert str(ToxEnv.parse("acd") | "cd") == "{a,}cd"
+
 
 def test_one():
     with pytest.raises(ValueError):
