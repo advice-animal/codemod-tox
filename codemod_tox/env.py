@@ -143,6 +143,8 @@ class ToxEnv(ToxBase):
         """
         left, middle, right = self._bucket()
 
+        # When this loop exits, `i` is the number of prefix-match characters,
+        # up to `len(left)`.
         for i in range(len(value)):
             if i >= len(left):
                 break
@@ -151,13 +153,22 @@ class ToxEnv(ToxBase):
         else:
             i = len(value)
 
-        for j in range(len(value) - i):
+        # For single-literal envs, there is no middle, so scooch any
+        # non-prefix-matched piece over to the right before checking for suffix
+        # matches.
+        if not middle and not right:
+            left, right = left[:i], left[i:]
+        # When this loop exits, `j` is the number of suffix-match characters,
+        # up to `len(right)`.
+        for j in range(len(value)):
             if j >= len(right):
+                break
+            if i + j >= len(value):
                 break
             if value[-j - 1] != right[-j - 1]:
                 break
         else:
-            j = len(right)
+            j = len(value)
 
         # N.b. Have to be careful because j can be zero
         left, middle = left[:i], middle.addprefix(left[i:])
