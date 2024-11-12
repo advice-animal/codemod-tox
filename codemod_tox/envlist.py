@@ -28,27 +28,33 @@ class ToxEnvlist(ToxBase):
         for e in self.envs:
             yield from iter(e)
 
-    def changefirst(
+    def transform_matching(
         self,
         predicate: Callable[[ToxEnv], bool],
         mapper: Callable[[ToxEnv], Optional[ToxEnv]],
+        max: Optional[int] = 1,
     ) -> "ToxEnvlist":
         """
-        Takes two functions to pick an env and modify it; None means delete it from the envlist.
+        Takes two functions to pick an env and modify it; None means delete it
+        from the envlist.  Returns a new envlist with the results.
 
         Can raise NoMatch if the predicate never matches.
         """
         new_envs: list[ToxEnv] = []
         it = iter(self.envs)
+        done = 0
         for i in it:
             if predicate(i):
                 new = mapper(i)
                 if new is not None:
                     new_envs.append(new)
-                break
+                done += 1
+                if max is not None and done >= max:
+                    break
             else:
                 new_envs.append(i)
-        else:
+
+        if not done:
             raise NoMatch
         new_envs.extend(it)
         return self.__class__(tuple(new_envs))
