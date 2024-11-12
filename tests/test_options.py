@@ -1,3 +1,4 @@
+import pytest
 from codemod_tox.options import ToxOptions
 
 
@@ -26,3 +27,13 @@ def test_options2():
     o2 = o.removeprefix("3")
     assert tuple(o2) == ("01", "02")
     assert str(o2) == "{01,02}"
+
+
+def test_options3():
+    o = ToxOptions.parse("{py37-tests,py38-tests}")
+    with pytest.raises(AssertionError):
+        o.removeprefix("x")
+    with pytest.raises(AssertionError):
+        o.removesuffix("x")
+    assert tuple(o.removeprefix("py")) == ("37-tests", "38-tests")
+    assert tuple(o.removesuffix("-tests")) == ("py37", "py38")

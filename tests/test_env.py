@@ -81,3 +81,20 @@ def test_one():
         ToxEnv.parse("py{37,38}").one()
     assert ToxEnv.parse("py{37}").one() == "py37"
     assert ToxEnv.parse("py{37,37}").one() == "py37"
+
+
+def test_endswith():
+    assert ToxEnv.parse("py37").endswith("37")
+    assert ToxEnv.parse("py{37}").endswith("37")
+    assert not ToxEnv.parse("py{37}").endswith("38")
+    assert ToxEnv.parse("{py,zz}{37,37}").endswith("37")
+    assert not ToxEnv.parse("{py,zz}{37,37}").endswith("38")
+
+
+def test_only():
+    assert ToxEnv.parse("py37").only("py37")
+    assert not ToxEnv.parse("py37").only("py38")
+    assert not ToxEnv.parse("py37").only("py")
+
+    assert ToxEnv.parse("py{37,37}").only("py37")
+    assert not ToxEnv.parse("py{37,38}").only("py37")
