@@ -2,18 +2,25 @@ from codemod_tox.conditional import ToxConditional
 from codemod_tox.env import ToxEnv
 from codemod_tox.options import ToxOptions
 
+DEPS_EXAMPLE = """\
+-rrequirements.txt
+flask: flask>0
+fastapi: fastapi>0"""
+
 
 def test_conditional():
-    c = ToxConditional.parse("x\ny: z")
+    c = ToxConditional.parse(DEPS_EXAMPLE)
     assert c.lines == (
-        (None, "x"),
-        (ToxEnv(("y",)), "z"),
+        (None, "-rrequirements.txt"),
+        (ToxEnv(("flask",)), "flask>0"),
+        (ToxEnv(("fastapi",)), "fastapi>0"),
     )
-    assert str(c) == "x\ny: z"
-    assert c.evaluate("foo") == "x"
-    assert c.evaluate("yy") == "x"
-    assert c.evaluate("y") == "x\nz"
-    assert c.evaluate("foo-y") == "x\nz"
+    assert str(c) == DEPS_EXAMPLE
+    assert c.evaluate("py38") == "-rrequirements.txt"
+    # Don't accidentally substring match, only full factors
+    assert c.evaluate("py38-zflask-zfastapi") == "-rrequirements.txt"
+    assert c.evaluate("py38-flask") == "-rrequirements.txt\nflask>0"
+    assert c.evaluate("py38-flask-fastapi") == "-rrequirements.txt\nflask>0\nfastapi>0"
 
 
 def test_conditional_expands():

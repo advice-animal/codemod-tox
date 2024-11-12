@@ -26,7 +26,6 @@ class ToxConditional(ToxBase):
     def parse(cls, value: str) -> "ToxConditional":
         lines: list[tuple[Optional[ToxEnv], str]] = []
         for line in value.splitlines():
-            print(repr(line))
             match = TOX_CONDITIONAL_RE.fullmatch(line)
             if match:
                 lines.append(
