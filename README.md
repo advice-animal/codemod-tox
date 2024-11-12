@@ -1,5 +1,34 @@
 # codemod-tox
 
+Handles parsing and modifying some basic `tox.ini` configuration strings.
+
+```ini
+# ToxEnvlist.parse("py{37,38}, style")
+envlist = py{37,38}, style
+
+# ToxEnv.parse("foo")
+[toxenv:foo]
+
+# ToxConditional.parse("-rrequirements.txt\nflask: flask>0")
+deps = -rrequirements.txt
+       flask: flask>0
+```
+
+You can then do basic modifications on them, or expand by iterating.
+
+```pycon
+>>> str(ToxEnv.parse("py37") | "py38")
+"py3{7,8}"
+>>> (ToxEnv.parse("py37") | "py38").startswith("py")
+True
+>>> list(ToxEnv.parse("py37") | "py38")
+["py37", "py38"]
+>>> str(ToxEnvlist.parse("py37, style").transform_matching(
+...     (lambda x: x.startswith("py3")),
+...     (lambda y: y | "py38"),
+... ))
+"py3{7,8}, style"
+```
 
 # Version Compat
 
