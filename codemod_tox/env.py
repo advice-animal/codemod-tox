@@ -8,6 +8,7 @@ from .base import ToxBase
 from .exceptions import HoistError, ParseError
 from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
+from .utils import common_prefix
 
 
 @dataclass(frozen=True)
@@ -142,6 +143,35 @@ class ToxEnv(ToxBase):
                         left += one
 
         return (left, middle, right)
+
+    def __add__(self, value: str) -> "ToxEnv":
+        """
+        Adds a new environment to the matching option group.
+        """
+        factor_prefix = ""
+        for i, p in enumerate(self.pieces):
+            if isinstance(p, str):
+                last_dash = p.rfind("-")
+                if last_dash >= 0:
+                    factor_prefix = p[last_dash + 1 :]
+                else:
+                    factor_prefix += p
+            else:
+                assert isinstance(p, ToxOptions)
+                if value.startswith(factor_prefix):
+                    remaining = value[len(factor_prefix) :]
+                    new_opts = ToxOptions(p.options + (remaining,))
+
+                    new_pieces: list[ToxOptions | str] = list(self.pieces[:i])
+                    new_pieces.append(new_opts)
+                    new_pieces.extend(self.pieces[i + 1 :])
+                    return self.__class__(tuple(new_pieces))
+
+                factor_prefix = ""
+
+        if common_prefix(str(self), value):
+            return self | value
+        return self
 
     def __or__(self, value: str) -> "ToxEnv":
         """

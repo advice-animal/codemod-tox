@@ -76,3 +76,29 @@ def test_transform_matching_max():
         max=None,
     )
     assert str(result) == "py3{7,10}\ntests\nstyle\npy3{8,10}\npy3{9,10}"
+
+
+def test_add_to_envlist():
+    e = ToxEnvlist.parse("py39")
+    result = e + "py312"
+    assert str(result) == "py3{9,12}"
+
+    e = ToxEnvlist.parse("py3{9}")
+    result = e + "py312"
+    assert str(result) == "py3{9,12}"
+
+    e = ToxEnvlist.parse("py3{9,10,11}, py3{9,10,11}t, style")
+    result = e + "py312"
+    assert str(result) == "py3{9,10,11,12}\npy3{9,10,11,12}t\nstyle"
+
+    e = ToxEnvlist.parse("py3{9,10}, style")
+    result = e + "py311"
+    assert str(result) == "py3{9,10,11}\nstyle"
+
+    e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, style")
+    result = e + "py311"
+    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}\nstyle"
+
+    e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, py3{9,10}-nocov, style")
+    result = e + "py311"
+    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}\npy3{9,10,11}-nocov\nstyle"

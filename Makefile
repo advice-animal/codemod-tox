@@ -16,7 +16,7 @@ setup:
 
 .PHONY: test
 test:
-	pytest --cov=codemod_tox
+	python -m coverage run -m pytest
 	python -m coverage report
 
 .PHONY: format

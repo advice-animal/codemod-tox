@@ -82,5 +82,8 @@ class ToxEnvlist(ToxBase):
 
         return cls(tuple(pieces))
 
+    def __add__(self, value: str) -> "ToxEnvlist":
+        return self.__class__(tuple(env + value for env in self.envs))
+
     def __str__(self) -> str:
         return "\n".join(str(x) for x in self.envs)

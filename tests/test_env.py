@@ -76,6 +76,22 @@ def test_or():
     assert str(ToxEnv.parse("acd") | "cd") == "{a,}cd"
 
 
+def test_add_environments():
+    assert str(ToxEnv.parse("py{39,310}") + "py311") == "py{39,310,311}"
+    assert str(ToxEnv.parse("py3{9,10}-foo{3,4}") + "py311") == "py3{9,10,11}-foo{3,4}"
+    assert (
+        str(ToxEnv.parse("py3{9,10}-foo{3,4}-bar") + "py311")
+        == "py3{9,10,11}-foo{3,4}-bar"
+    )
+    assert str(ToxEnv.parse("py3{9,10}-foo{3,4}") + "foo5") == "py3{9,10}-foo{3,4,5}"
+    assert (
+        str(ToxEnv.parse("py3{9,10}-foo{34,35}") + "foo36") == "py3{9,10}-foo{34,35,36}"
+    )
+    assert str(ToxEnv.parse("{39,310}") + "311") == "{39,310,311}"
+    assert str(ToxEnv.parse("abc") + "xyz") == "abc"
+    assert str(ToxEnv.parse("py3{10,11,12}") + "py313") == "py3{10,11,12,13}"
+
+
 def test_one():
     with pytest.raises(ValueError):
         ToxEnv.parse("py{37,38}").one()
