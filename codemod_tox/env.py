@@ -8,7 +8,6 @@ from .base import ToxBase
 from .exceptions import HoistError, ParseError
 from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
-from .utils import common_prefix
 
 
 @dataclass(frozen=True)
@@ -144,34 +143,68 @@ class ToxEnv(ToxBase):
 
         return (left, middle, right)
 
-    def __add__(self, value: str) -> "ToxEnv":
+    def _add_to_factor(self, value: str) -> "ToxEnv | None":
+        """Try to add value's numeric part to a single factor's ToxOptions.
+
+        self must be a single factor (no dashes).  Returns None if the
+        factor and value don't share a common prefix with numeric suffixes
+        in both.  For example, factor "py3{9,10}" matches value "py311"
+        (prefix "py3", suffixes "9"/"10"/"11" are all numeric), but
+        factor "foo{3,4}" does not match value "py311".
         """
-        Adds a new environment to the matching option group.
-        """
-        factor_prefix = ""
+        new_pieces: list[ToxOptions | str]
+        prefix = ""
         for i, p in enumerate(self.pieces):
             if isinstance(p, str):
-                last_dash = p.rfind("-")
-                if last_dash >= 0:
-                    factor_prefix = p[last_dash + 1 :]
-                else:
-                    factor_prefix += p
-            else:
-                assert isinstance(p, ToxOptions)
-                if value.startswith(factor_prefix):
-                    remaining = value[len(factor_prefix) :]
-                    new_opts = ToxOptions(p.options + (remaining,))
+                prefix += p
+                continue
+            assert isinstance(p, ToxOptions)
+            if not value.startswith(prefix):
+                return None
+            remaining = value[len(prefix) :]
+            if not remaining.isdigit():
+                return None
+            if not all(o.isdigit() for o in p.options):
+                return None
+            new_opts = ToxOptions(p.options + (remaining,))
+            new_pieces = list(self.pieces[:i]) + [new_opts] + list(self.pieces[i + 1 :])
+            return ToxEnv(tuple(new_pieces))
 
-                    new_pieces: list[ToxOptions | str] = list(self.pieces[:i])
-                    new_pieces.append(new_opts)
-                    new_pieces.extend(self.pieces[i + 1 :])
-                    return self.__class__(tuple(new_pieces))
+        # No ToxOptions found — try splitting a literal at the digit boundary
+        split = len(prefix)
+        while split > 0 and prefix[split - 1].isdigit():
+            split -= 1
+        suf = prefix[split:]
+        if not suf:
+            return None
+        pre = prefix[:split]
+        if not value.startswith(pre):
+            return None
+        v_suf = value[len(pre) :]
+        if not v_suf.isdigit():
+            return None
+        new_pieces = []
+        if pre:
+            new_pieces.append(pre)
+        new_pieces.append(ToxOptions((suf, v_suf)))
+        return ToxEnv(tuple(new_pieces))
 
-                factor_prefix = ""
+    def add_numeric_option(self, value: str) -> "ToxEnv":
+        """
+        Adds a new environment to the matching option group.
 
-        if common_prefix(str(self), value):
-            return self | value
-        return self
+        The variable part must be numeric: both the existing options and the
+        new suffix must be all digits.  Raises ValueError if no matching
+        numeric factor is found.
+        """
+        factors = str(self).split("-")
+        for fi, factor_str in enumerate(factors):
+            result = ToxEnv.parse(factor_str)._add_to_factor(value)
+            if result is not None:
+                factors[fi] = str(result)
+                return ToxEnv.parse("-".join(factors))
+
+        raise ValueError(f"No numeric factor in {str(self)!r} matches {value!r}")
 
     def __or__(self, value: str) -> "ToxEnv":
         """

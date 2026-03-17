@@ -82,8 +82,14 @@ class ToxEnvlist(ToxBase):
 
         return cls(tuple(pieces))
 
-    def __add__(self, value: str) -> "ToxEnvlist":
-        return self.__class__(tuple(env + value for env in self.envs))
+    def add_numeric_option(self, value: str) -> "ToxEnvlist":
+        new_envs: list[ToxEnv] = []
+        for env in self.envs:
+            try:
+                new_envs.append(env.add_numeric_option(value))
+            except ValueError:
+                new_envs.append(env)
+        return self.__class__(tuple(new_envs))
 
     def __str__(self) -> str:
         return "\n".join(str(x) for x in self.envs)

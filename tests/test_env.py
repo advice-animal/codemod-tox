@@ -76,20 +76,58 @@ def test_or():
     assert str(ToxEnv.parse("acd") | "cd") == "{a,}cd"
 
 
-def test_add_environments():
-    assert str(ToxEnv.parse("py{39,310}") + "py311") == "py{39,310,311}"
-    assert str(ToxEnv.parse("py3{9,10}-foo{3,4}") + "py311") == "py3{9,10,11}-foo{3,4}"
+def test_add_numeric_option():
     assert (
-        str(ToxEnv.parse("py3{9,10}-foo{3,4}-bar") + "py311")
+        str(ToxEnv.parse("py{39,310}").add_numeric_option("py311")) == "py{39,310,311}"
+    )
+    assert (
+        str(ToxEnv.parse("py3{9,10}-foo{3,4}").add_numeric_option("py311"))
+        == "py3{9,10,11}-foo{3,4}"
+    )
+    assert (
+        str(ToxEnv.parse("py3{9,10}-foo{3,4}-bar").add_numeric_option("py311"))
         == "py3{9,10,11}-foo{3,4}-bar"
     )
-    assert str(ToxEnv.parse("py3{9,10}-foo{3,4}") + "foo5") == "py3{9,10}-foo{3,4,5}"
     assert (
-        str(ToxEnv.parse("py3{9,10}-foo{34,35}") + "foo36") == "py3{9,10}-foo{34,35,36}"
+        str(ToxEnv.parse("py3{9,10}-foo{3,4}").add_numeric_option("foo5"))
+        == "py3{9,10}-foo{3,4,5}"
     )
-    assert str(ToxEnv.parse("{39,310}") + "311") == "{39,310,311}"
-    assert str(ToxEnv.parse("abc") + "xyz") == "abc"
-    assert str(ToxEnv.parse("py3{10,11,12}") + "py313") == "py3{10,11,12,13}"
+    assert (
+        str(ToxEnv.parse("py3{9,10}-foo{34,35}").add_numeric_option("foo36"))
+        == "py3{9,10}-foo{34,35,36}"
+    )
+    assert str(ToxEnv.parse("{39,310}").add_numeric_option("311")) == "{39,310,311}"
+    assert (
+        str(ToxEnv.parse("py3{10,11,12}").add_numeric_option("py313"))
+        == "py3{10,11,12,13}"
+    )
+    assert (
+        str(ToxEnv.parse("py310-b-c").add_numeric_option("py311")) == "py{310,311}-b-c"
+    )
+    assert (
+        str(ToxEnv.parse("a-py310-b-c").add_numeric_option("py311"))
+        == "a-py{310,311}-b-c"
+    )
+
+
+def test_add_numeric_option_errors():
+    with pytest.raises(ValueError):
+        ToxEnv.parse("abc").add_numeric_option("xyz")
+    with pytest.raises(ValueError):
+        ToxEnv.parse("py{a,b}").add_numeric_option("py3")
+    # Value remaining after prefix is not numeric
+    with pytest.raises(ValueError):
+        ToxEnv.parse("py{39,310}").add_numeric_option("pyabc")
+    # Literal factor, value suffix not numeric
+    with pytest.raises(ValueError):
+        ToxEnv.parse("py310").add_numeric_option("pyabc")
+    # Literal factor, different prefix
+    with pytest.raises(ValueError):
+        ToxEnv.parse("py310").add_numeric_option("foo311")
+
+
+def test_add_numeric_option_no_prefix():
+    assert str(ToxEnv.parse("310").add_numeric_option("311")) == "{310,311}"
 
 
 def test_one():
