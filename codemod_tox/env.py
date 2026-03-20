@@ -8,6 +8,7 @@ from .base import ToxBase
 from .exceptions import HoistError, NoFactorMatch, ParseError
 from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
+from .utils import pre_num_suf
 
 
 @dataclass(frozen=True)
@@ -143,7 +144,7 @@ class ToxEnv(ToxBase):
 
         return (left, middle, right)
 
-    def _add_to_factor(self, value: str) -> "ToxEnv | None":
+    def _add_number_to_factor(self, value: str) -> "ToxEnv | None":
         """Try to add value's numeric part to a single factor's ToxOptions.
 
         self must be a single factor (no dashes).  Returns None if the
@@ -151,44 +152,43 @@ class ToxEnv(ToxBase):
         in both.  For example, factor "py3{9,10}" matches value "py311"
         (prefix "py3", suffixes "9"/"10"/"11" are all numeric), but
         factor "foo{3,4}" does not match value "py311".
-        """
-        new_pieces: list[ToxOptions | str]
-        prefix = ""
-        for i, p in enumerate(self.pieces):
-            if isinstance(p, str):
-                prefix += p
-                continue
-            assert isinstance(p, ToxOptions)
-            if not value.startswith(prefix):
-                return None
-            remaining = value[len(prefix) :]
-            if not remaining.isdigit():
-                return None
-            if not all(o.isdigit() for o in p.options):
-                return None
-            new_opts = ToxOptions(p.options + (remaining,))
-            new_pieces = list(self.pieces[:i]) + [new_opts] + list(self.pieces[i + 1 :])
-            return ToxEnv(tuple(new_pieces))
 
-        # No ToxOptions found — try splitting a literal at the digit boundary
-        assert len(self.pieces) == 1
-        split = len(prefix)
-        while split > 0 and prefix[split - 1].isdigit():
-            split -= 1
-        suf = prefix[split:]
-        if not suf:
+        Suffixes must also match.
+        """
+        if (pns := pre_num_suf(value)) is None:
             return None
-        pre = prefix[:split]
-        if not value.startswith(pre):
+        vpre, vnum, vsuf = pns
+        if not vpre:
             return None
-        v_suf = value[len(pre) :]
-        if not v_suf.isdigit():
+        epres = set()
+        enums = set()
+        esufs = set()
+        for env in self:
+            pns = pre_num_suf(env)
+            if pns is None:
+                return None
+            epres.add(pns[0])
+            enums.add(pns[1])
+            esufs.add(pns[2])
+        if len(epres) != 1 or len(esufs) != 1:
             return None
-        new_pieces = []
-        if pre:
-            new_pieces.append(pre)
-        new_pieces.append(ToxOptions((suf, v_suf)))
-        return ToxEnv(tuple(new_pieces))
+        if vpre != epres.pop() or vsuf != esufs.pop():
+            return None
+
+        # See if we can keep the original fixed part.
+        assert isinstance(self.pieces[0], str)
+        new_pre = vpre
+        new_nums = sorted(enums | {vnum}, key=int)
+        pns = pre_num_suf(self.pieces[0])
+        if pns is not None:
+            prefix_num = pns[1]
+            if len(prefix_num) == 1 and all(n.startswith(prefix_num) for n in new_nums):
+                new_nums = [n[1:] for n in new_nums]
+                new_pre = self.pieces[0]
+
+        nums = ToxOptions(tuple(new_nums))
+        pieces: list[ToxOptions | str] = [x for x in (new_pre, nums, vsuf) if x]  # type: ignore
+        return self.__class__(tuple(pieces))
 
     def add_numeric_option(self, value: str) -> "ToxEnv":
         """
@@ -200,7 +200,7 @@ class ToxEnv(ToxBase):
         """
         factors = str(self).split("-")
         for fi, factor_str in enumerate(factors):
-            result = ToxEnv.parse(factor_str)._add_to_factor(value)
+            result = ToxEnv.parse(factor_str)._add_number_to_factor(value)
             if result is not None:
                 factors[fi] = str(result)
                 return ToxEnv.parse("-".join(factors))

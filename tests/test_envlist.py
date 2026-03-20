@@ -85,7 +85,7 @@ def test_add_numeric_option_to_envlist():
 
     e = ToxEnvlist.parse("py3{9,10,11}, py3{9,10,11}t, style")
     result = e.add_numeric_option("py312")
-    assert str(result) == "py3{9,10,11,12}\npy3{9,10,11,12}t\nstyle"
+    assert str(result) == "py3{9,10,11,12}\npy3{9,10,11}t\nstyle"
 
     e = ToxEnvlist.parse("py3{9,10}, style")
     result = e.add_numeric_option("py311")
