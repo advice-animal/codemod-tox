@@ -160,9 +160,9 @@ class ToxEnv(ToxBase):
         vpre, vnum, vsuf = pns
         if not vpre:
             return None
-        epres = set()
-        enums = set()
-        esufs = set()
+        epres = {vpre}
+        enums = {vnum}
+        esufs = {vsuf}
         for env in self:
             pns = pre_num_suf(env)
             if pns is None:
@@ -172,13 +172,11 @@ class ToxEnv(ToxBase):
             esufs.add(pns[2])
         if len(epres) != 1 or len(esufs) != 1:
             return None
-        if vpre != epres.pop() or vsuf != esufs.pop():
-            return None
 
         # See if we can keep the original fixed part.
         assert isinstance(self.pieces[0], str)
         new_pre = vpre
-        new_nums = sorted(enums | {vnum}, key=int)
+        new_nums = sorted(enums, key=int)
         pns = pre_num_suf(self.pieces[0])
         if pns is not None:
             prefix_num = pns[1]
