@@ -84,11 +84,15 @@ class ToxEnvlist(ToxBase):
 
     def add_numeric_option(self, value: str) -> "ToxEnvlist":
         new_envs: list[ToxEnv] = []
+        added = False
         for env in self.envs:
             try:
                 new_envs.append(env.add_numeric_option(value))
+                added = True
             except NoFactorMatch:
                 new_envs.append(env)
+        if not added:
+            new_envs.append(ToxEnv.parse(value))
         return self.__class__(tuple(new_envs))
 
     def __str__(self) -> str:
