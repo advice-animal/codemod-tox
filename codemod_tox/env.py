@@ -5,7 +5,7 @@ from itertools import product
 from typing import Generator
 
 from .base import ToxBase
-from .exceptions import HoistError, ParseError
+from .exceptions import HoistError, NoFactorMatch, ParseError
 from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
 
@@ -171,6 +171,7 @@ class ToxEnv(ToxBase):
             return ToxEnv(tuple(new_pieces))
 
         # No ToxOptions found — try splitting a literal at the digit boundary
+        assert len(self.pieces) == 1
         split = len(prefix)
         while split > 0 and prefix[split - 1].isdigit():
             split -= 1
@@ -204,7 +205,7 @@ class ToxEnv(ToxBase):
                 factors[fi] = str(result)
                 return ToxEnv.parse("-".join(factors))
 
-        raise ValueError(f"No numeric factor in {str(self)!r} matches {value!r}")
+        raise NoFactorMatch(f"No numeric factor in {str(self)!r} matches {value!r}")
 
     def __or__(self, value: str) -> "ToxEnv":
         """

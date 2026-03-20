@@ -12,3 +12,7 @@ class NoMatch(Exception):
 
 class EmptyNow(Exception):
     pass
+
+
+class NoFactorMatch(Exception):
+    pass

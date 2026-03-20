@@ -1,5 +1,6 @@
 import pytest
 from codemod_tox.env import HoistError, ToxEnv
+from codemod_tox.exceptions import NoFactorMatch
 from codemod_tox.options import ToxOptions
 
 
@@ -111,18 +112,18 @@ def test_add_numeric_option():
 
 
 def test_add_numeric_option_errors():
-    with pytest.raises(ValueError):
+    with pytest.raises(NoFactorMatch):
         ToxEnv.parse("abc").add_numeric_option("xyz")
-    with pytest.raises(ValueError):
+    with pytest.raises(NoFactorMatch):
         ToxEnv.parse("py{a,b}").add_numeric_option("py3")
     # Value remaining after prefix is not numeric
-    with pytest.raises(ValueError):
+    with pytest.raises(NoFactorMatch):
         ToxEnv.parse("py{39,310}").add_numeric_option("pyabc")
     # Literal factor, value suffix not numeric
-    with pytest.raises(ValueError):
+    with pytest.raises(NoFactorMatch):
         ToxEnv.parse("py310").add_numeric_option("pyabc")
     # Literal factor, different prefix
-    with pytest.raises(ValueError):
+    with pytest.raises(NoFactorMatch):
         ToxEnv.parse("py310").add_numeric_option("foo311")
 
 
