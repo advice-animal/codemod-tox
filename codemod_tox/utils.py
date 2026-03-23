@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Generator, Sequence, TypeVar
+import re
+from typing import cast, Generator, Sequence, TypeVar
 
 T = TypeVar("T")
 
@@ -18,3 +19,10 @@ def common_prefix(a: str, b: str) -> str:
             break
         buf += c1
     return buf
+
+
+def pre_num_suf(s: str) -> tuple[str, str, str] | None:
+    parts_match = re.fullmatch(r"([a-zA-Z_]*)([0-9]+)([a-zA-Z_]*)", s)
+    if not parts_match:
+        return None
+    return cast(tuple[str, str, str], parts_match.groups())

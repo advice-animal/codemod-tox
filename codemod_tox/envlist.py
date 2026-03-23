@@ -5,7 +5,7 @@ from typing import Callable, Generator, Optional
 
 from .base import ToxBase
 from .env import ToxEnv
-from .exceptions import NoMatch
+from .exceptions import NoFactorMatch, NoMatch
 from .parse import TOX_ENV_TOKEN_RE
 
 
@@ -81,6 +81,19 @@ class ToxEnvlist(ToxBase):
             pieces.append(ToxEnv.parse(buf))
 
         return cls(tuple(pieces))
+
+    def add_numeric_option(self, value: str) -> "ToxEnvlist":
+        new_envs: list[ToxEnv] = []
+        added = False
+        for env in self.envs:
+            try:
+                new_envs.append(env.add_numeric_option(value))
+                added = True
+            except NoFactorMatch:
+                new_envs.append(env)
+        if not added:
+            new_envs.append(ToxEnv.parse(value))
+        return self.__class__(tuple(new_envs))
 
     def __str__(self) -> str:
         return "\n".join(str(x) for x in self.envs)

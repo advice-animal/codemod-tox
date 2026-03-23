@@ -5,9 +5,10 @@ from itertools import product
 from typing import Generator
 
 from .base import ToxBase
-from .exceptions import HoistError, ParseError
+from .exceptions import HoistError, NoFactorMatch, ParseError
 from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
+from .utils import pre_num_suf
 
 
 @dataclass(frozen=True)
@@ -142,6 +143,70 @@ class ToxEnv(ToxBase):
                         left += one
 
         return (left, middle, right)
+
+    def _add_number_to_factor(self, value: str) -> "ToxEnv | None":
+        """Try to add value's numeric part to a single factor's ToxOptions.
+
+        self must be a single factor (no dashes).  Returns None if the
+        factor and value don't share a common prefix with numeric suffixes
+        in both.  For example, factor "py3{9,10}" matches value "py311"
+        (prefix "py3", suffixes "9"/"10"/"11" are all numeric), but
+        factor "foo{3,4}" does not match value "py311".
+
+        Suffixes must also match.
+        """
+        if (pns := pre_num_suf(value)) is None:
+            return None
+        vpre, vnum, vsuf = pns
+        if not vpre:
+            return None
+        epres = {vpre}
+        enums = {vnum}
+        esufs = {vsuf}
+        for env in self:
+            pns = pre_num_suf(env)
+            if pns is None:
+                return None
+            epres.add(pns[0])
+            enums.add(pns[1])
+            esufs.add(pns[2])
+        if len(epres) != 1 or len(esufs) != 1:
+            # The prefixes or suffixes don't all match, nothing we can do.
+            return None
+
+        # See if we can keep the original fixed part.
+        assert isinstance(self.pieces[0], str)
+        new_pre = vpre
+        new_nums = sorted(enums, key=int)
+        if (pns := pre_num_suf(self.pieces[0])) is not None:
+            prefix_num = pns[1]
+            # Look at the original prefix broken into pre/num/suf. "py3" is
+            # nice to keep. `prefix_num` is the "3" in that case, so check if
+            # it's just one character and is a valid prefix.
+            if len(prefix_num) == 1 and all(n.startswith(prefix_num) for n in new_nums):
+                new_nums = [n[1:] for n in new_nums]
+                new_pre = self.pieces[0]
+
+        nums = ToxOptions(tuple(new_nums))
+        pieces: list[ToxOptions | str] = [x for x in (new_pre, nums, vsuf) if x]  # type: ignore
+        return self.__class__(tuple(pieces))
+
+    def add_numeric_option(self, value: str) -> "ToxEnv":
+        """
+        Adds a new environment to the matching option group.
+
+        The variable part must be numeric: both the existing options and the
+        new suffix must be all digits.  Raises ValueError if no matching
+        numeric factor is found.
+        """
+        factors = str(self).split("-")
+        for fi, factor_str in enumerate(factors):
+            result = ToxEnv.parse(factor_str)._add_number_to_factor(value)
+            if result is not None:
+                factors[fi] = str(result)
+                return ToxEnv.parse("-".join(factors))
+
+        raise NoFactorMatch(f"No numeric factor in {str(self)!r} matches {value!r}")
 
     def __or__(self, value: str) -> "ToxEnv":
         """
