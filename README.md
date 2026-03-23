@@ -30,10 +30,9 @@ True
 "py3{7,8}, style"
 ```
 
-# Version Compat
+# Version Compatibility
 
-Usage of this library should work back to 3.7, but development (and mypy
-compatibility) only on 3.10-3.12.  Linting requires 3.12 for full fidelity.
+Python 3.10+.
 
 # Versioning
 
