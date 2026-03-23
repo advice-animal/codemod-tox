@@ -171,15 +171,18 @@ class ToxEnv(ToxBase):
             enums.add(pns[1])
             esufs.add(pns[2])
         if len(epres) != 1 or len(esufs) != 1:
+            # The prefixes or suffixes don't all match, nothing we can do.
             return None
 
         # See if we can keep the original fixed part.
         assert isinstance(self.pieces[0], str)
         new_pre = vpre
         new_nums = sorted(enums, key=int)
-        pns = pre_num_suf(self.pieces[0])
-        if pns is not None:
+        if (pns := pre_num_suf(self.pieces[0])) is not None:
             prefix_num = pns[1]
+            # Look at the original prefix broken into pre/num/suf. "py3" is
+            # nice to keep. `prefix_num` is the "3" in that case, so check if
+            # it's just one character and is a valid prefix.
             if len(prefix_num) == 1 and all(n.startswith(prefix_num) for n in new_nums):
                 new_nums = [n[1:] for n in new_nums]
                 new_pre = self.pieces[0]
