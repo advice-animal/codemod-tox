@@ -6,6 +6,7 @@ from typing import Callable, Generator, Optional
 from .base import ToxBase
 from .env import ToxEnv
 from .exceptions import NoFactorMatch, NoMatch
+from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
 
 
@@ -86,6 +87,9 @@ class ToxEnvlist(ToxBase):
         new_envs: list[ToxEnv] = []
         added = False
         for env in self.envs:
+            if not any(isinstance(p, ToxOptions) for p in env.pieces):
+                new_envs.append(env)
+                continue
             try:
                 new_envs.append(env.add_numeric_option(value))
                 added = True
