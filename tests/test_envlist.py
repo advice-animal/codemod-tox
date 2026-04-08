@@ -106,3 +106,11 @@ def test_add_numeric_option_to_envlist():
     e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, py3{9,10}-nocov, style")
     result = e.add_numeric_option("py311")
     assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}\npy3{9,10,11}-nocov\nstyle"
+
+    e = ToxEnvlist.parse("py37,py310,linters")
+    result = e.add_numeric_option("py313")
+    assert str(result) == "py37\npy310\nlinters\npy313"
+
+    e = ToxEnvlist.parse("py3{6,10},py37,linters")
+    result = e.add_numeric_option("py313")
+    assert str(result) == "py3{6,10,13}\npy37\nlinters"
