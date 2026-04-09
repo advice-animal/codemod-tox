@@ -13,19 +13,19 @@ def test_trailing_comma():
     assert tuple(e) == ("a", "b")
     e = ToxEnvlist.parse("a,b,")
     assert tuple(e) == ("a", "b")
-    assert str(e) == "a\nb"
+    assert str(e) == "a,b"
 
     e = ToxEnvlist.parse("a , b , ")
     assert tuple(e) == ("a", "b")
-    assert str(e) == "a\nb"
+    assert str(e) == "a, b"
 
     e = ToxEnvlist.parse("a\nb\n")
     assert tuple(e) == ("a", "b")
-    assert str(e) == "a\nb"
+    assert str(e) == "\na\nb"
 
     e = ToxEnvlist.parse("a,b\nc")
     assert tuple(e) == ("a", "b", "c")
-    assert str(e) == "a\nb\nc"
+    assert str(e) == "\na\nb\nc"
 
 
 def test_transform_matching():
@@ -34,7 +34,7 @@ def test_transform_matching():
         (lambda x: x.startswith("py3")),
         (lambda y: y | "py38"),
     )
-    assert str(result) == "py3{7,8}\nstyle"
+    assert str(result) == "py3{7,8}, style"
     with pytest.raises(NoMatch):
         e.transform_matching(
             (lambda x: x.startswith("foo")),
@@ -61,21 +61,21 @@ def test_transform_matching_max():
         (lambda x: x.startswith("py3")),
         (lambda y: y | "py310"),
     )
-    assert str(result) == "py3{7,10}\ntests\nstyle\npy38\npy39"
+    assert str(result) == "py3{7,10}, tests, style, py38, py39"
 
     result = e.transform_matching(
         (lambda x: x.startswith("py3")),
         (lambda y: y | "py310"),
         max=2,
     )
-    assert str(result) == "py3{7,10}\ntests\nstyle\npy3{8,10}\npy39"
+    assert str(result) == "py3{7,10}, tests, style, py3{8,10}, py39"
 
     result = e.transform_matching(
         (lambda x: x.startswith("py3")),
         (lambda y: y | "py310"),
         max=None,
     )
-    assert str(result) == "py3{7,10}\ntests\nstyle\npy3{8,10}\npy3{9,10}"
+    assert str(result) == "py3{7,10}, tests, style, py3{8,10}, py3{9,10}"
 
 
 def test_add_numeric_option_to_envlist():
@@ -85,32 +85,32 @@ def test_add_numeric_option_to_envlist():
 
     e = ToxEnvlist.parse("py3{9,10,11}, py3{9,10,11}t, style")
     result = e.add_numeric_option("py312")
-    assert str(result) == "py3{9,10,11,12}\npy3{9,10,11}t\nstyle"
+    assert str(result) == "py3{9,10,11,12}, py3{9,10,11}t, style"
 
     e = ToxEnvlist.parse("py3{9,10,11}, style")
     result = e.add_numeric_option("py312t")
-    assert str(result) == "py3{9,10,11}\nstyle\npy312t"
+    assert str(result) == "py3{9,10,11}, style, py312t"
 
-    e = ToxEnvlist.parse("py3{9,10,11}, py3{9,10,11}t, style")
+    e = ToxEnvlist.parse("py3{9,10,11},\npy3{9,10,11}t, style")
     result = e.add_numeric_option("py312t")
-    assert str(result) == "py3{9,10,11}\npy3{9,10,11,12}t\nstyle"
+    assert str(result) == "\npy3{9,10,11}\npy3{9,10,11,12}t\nstyle"
 
     e = ToxEnvlist.parse("py3{9,10}, style")
     result = e.add_numeric_option("py311")
-    assert str(result) == "py3{9,10,11}\nstyle"
+    assert str(result) == "py3{9,10,11}, style"
 
     e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, style")
     result = e.add_numeric_option("py311")
-    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}\nstyle"
+    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}, style"
 
     e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, py3{9,10}-nocov, style")
     result = e.add_numeric_option("py311")
-    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}\npy3{9,10,11}-nocov\nstyle"
+    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}, py3{9,10,11}-nocov, style"
 
     e = ToxEnvlist.parse("py37,py310,linters")
     result = e.add_numeric_option("py313")
-    assert str(result) == "py37\npy310\nlinters\npy313"
+    assert str(result) == "py37,py310,linters,py313"
 
     e = ToxEnvlist.parse("py3{6,10},py37,linters")
     result = e.add_numeric_option("py313")
-    assert str(result) == "py3{6,10,13}\npy37\nlinters"
+    assert str(result) == "py3{6,10,13},py37,linters"
