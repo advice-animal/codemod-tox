@@ -17,13 +17,16 @@ class ToxEnvlist(ToxBase):
 
     e.g. `py{37,38}-tests, coverage, lint`
 
-    Although both comma and newline separated are supported during parsing,
-    only newline separated will be output with `str()`.  Check that
-    set(a) != set(b) before changing a configuration value to avoid
-    (one-time) churn.
+    Both comma and newline separated are supported during parsing, and the
+    style is preserved in `str()`: a one-line comma-separated input stays
+    comma-separated; a multi-line input uses newlines, with a leading newline.
+    Check that set(a) != set(b) before changing a configuration value to
+    avoid (one-time) churn.
     """
 
     envs: tuple[ToxEnv, ...]
+    separator: str = "\n"
+    leading_newline: bool = False
 
     def __iter__(self) -> Generator[str, None, None]:
         for e in self.envs:
@@ -58,21 +61,30 @@ class ToxEnvlist(ToxBase):
         if not done:
             raise NoMatch
         new_envs.extend(it)
-        return self.__class__(tuple(new_envs))
+        return self.__class__(tuple(new_envs), self.separator, self.leading_newline)
 
     @classmethod
     def parse(cls, s: str) -> "ToxEnvlist":
         pieces = []
         buf = ""
+        has_newline = False
+        comma_sep = None
 
         for match in TOX_ENV_TOKEN_RE.finditer(s):
             # This will double-parse but these strings are typically pretty
             # trivial and we've restricted the character set significantly so
             # this should be roughly linear
-            if match.group("comma") or match.group("newline"):
+            if match.group("comma"):
+                if comma_sep is None:
+                    comma_sep = match.group("comma")
                 assert buf
                 pieces.append(ToxEnv.parse(buf))
                 buf = ""
+            elif match.group("newline"):
+                has_newline = True
+                if buf:
+                    pieces.append(ToxEnv.parse(buf))
+                    buf = ""
             elif match.group("space"):
                 pass
             else:
@@ -81,7 +93,14 @@ class ToxEnvlist(ToxBase):
         if buf:
             pieces.append(ToxEnv.parse(buf))
 
-        return cls(tuple(pieces))
+        if not has_newline and comma_sep is not None:
+            separator = comma_sep
+            leading_newline = False
+        else:
+            separator = "\n"
+            leading_newline = has_newline
+
+        return cls(tuple(pieces), separator=separator, leading_newline=leading_newline)
 
     def add_numeric_option(self, value: str) -> "ToxEnvlist":
         new_envs: list[ToxEnv] = []
@@ -97,7 +116,10 @@ class ToxEnvlist(ToxBase):
                 new_envs.append(env)
         if not added:
             new_envs.append(ToxEnv.parse(value))
-        return self.__class__(tuple(new_envs))
+        return self.__class__(tuple(new_envs), self.separator, self.leading_newline)
 
     def __str__(self) -> str:
-        return "\n".join(str(x) for x in self.envs)
+        if not self.envs:
+            return ""
+        result = self.separator.join(str(x) for x in self.envs)
+        return ("\n" if self.leading_newline else "") + result
