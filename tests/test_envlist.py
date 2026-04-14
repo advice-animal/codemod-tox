@@ -114,3 +114,15 @@ def test_add_numeric_option_to_envlist():
     e = ToxEnvlist.parse("py3{6,10},py37,linters")
     result = e.add_numeric_option("py313")
     assert str(result) == "py3{6,10,13},py37,linters"
+
+    e = ToxEnvlist.parse("py37-fastapi, py38-fastapi")
+    result = e.add_numeric_option("py39")
+    assert str(result) == "py37-fastapi, py38-fastapi, py39"
+
+    e = ToxEnvlist.parse("py{37,38}-fastapi")
+    result = e.add_numeric_option("py39")
+    assert str(result) == "py{37,38,39}-fastapi"
+
+    e = ToxEnvlist.parse("py37-{fastapi,flask}")
+    result = e.add_numeric_option("py39")
+    assert str(result) == "py{37,39}-{fastapi,flask}"
