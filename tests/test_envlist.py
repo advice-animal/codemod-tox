@@ -81,6 +81,7 @@ def test_transform_matching_max():
 @pytest.mark.parametrize(
     "envlist, option, expected",
     [
+        ("py39", "py312", "py39,py312"),
         ("py3{9}", "py312", "py3{9,12}"),
         (
             "py3{9,10,11}, py3{9,10,11}t, style",
@@ -109,6 +110,11 @@ def test_transform_matching_max():
         ("py37-fastapi, py38-fastapi", "py39", "py37-fastapi, py38-fastapi, py39"),
         ("py{37,38}-fastapi", "py39", "py{37,38,39}-fastapi"),
         ("py37-{fastapi,flask}", "py39", "py{37,39}-{fastapi,flask}"),
+        (
+            "py{38,39,310,311,312}{,-flask,-fastapi}, coverage, style",
+            "py313",
+            "py{38,39,310,311,312,313}{,-flask,-fastapi}, coverage, style",
+        ),
     ],
 )
 def test_add_numeric_option_to_envlist(envlist, option, expected):

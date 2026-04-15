@@ -11,6 +11,23 @@ from .parse import TOX_ENV_TOKEN_RE
 from .utils import pre_num_suf
 
 
+def _split_top_level(s: str) -> list[str]:
+    """Split s on dashes that are not inside curly braces."""
+    parts = []
+    depth = 0
+    start = 0
+    for i, c in enumerate(s):
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        elif c == "-" and depth == 0:
+            parts.append(s[start:i])
+            start = i + 1
+    parts.append(s[start:])
+    return parts
+
+
 @dataclass(frozen=True)
 class ToxEnv(ToxBase):
     """
@@ -199,12 +216,34 @@ class ToxEnv(ToxBase):
         new suffix must be all digits.  Raises ValueError if no matching
         numeric factor is found.
         """
-        factors = str(self).split("-")
+        factors = _split_top_level(str(self))
         for fi, factor_str in enumerate(factors):
             result = ToxEnv.parse(factor_str)._add_number_to_factor(value)
             if result is not None:
                 factors[fi] = str(result)
                 return ToxEnv.parse("-".join(factors))
+
+        # The factor-split approach iterates all generated strings (e.g., "py38-flask"),
+        # which pre_num_suf can't parse because of the dash.  Fall back to scanning
+        # pieces directly to find the numeric ToxOptions.
+        if (pns := pre_num_suf(value)) is not None:
+            vpre, vnum, vsuf = pns
+            if vpre:
+                new_pieces = list(self.pieces)
+                acc = ""
+                for pi, piece in enumerate(new_pieces):
+                    if isinstance(piece, str):
+                        acc += piece
+                    elif acc == vpre and all(opt.isdigit() for opt in piece.options):
+                        next_literal = ""
+                        if pi + 1 < len(new_pieces) and isinstance(
+                            new_pieces[pi + 1], str
+                        ):
+                            next_literal = new_pieces[pi + 1]  # type: ignore[assignment]
+                        if next_literal == vsuf:
+                            new_opts = tuple(sorted(piece.options + (vnum,), key=int))
+                            new_pieces[pi] = ToxOptions(new_opts)
+                            return ToxEnv(tuple(new_pieces))
 
         raise NoFactorMatch(f"No numeric factor in {str(self)!r} matches {value!r}")
 
