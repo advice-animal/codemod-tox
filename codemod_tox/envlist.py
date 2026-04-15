@@ -93,12 +93,12 @@ class ToxEnvlist(ToxBase):
         if buf:
             pieces.append(ToxEnv.parse(buf))
 
-        if not has_newline and comma_sep is not None:
-            separator = comma_sep
-            leading_newline = False
-        else:
+        if has_newline:
             separator = "\n"
-            leading_newline = has_newline
+            leading_newline = True
+        else:
+            separator = comma_sep if comma_sep is not None else ","
+            leading_newline = False
 
         return cls(tuple(pieces), separator=separator, leading_newline=leading_newline)
 
