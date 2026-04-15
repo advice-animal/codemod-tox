@@ -78,51 +78,40 @@ def test_transform_matching_max():
     assert str(result) == "py3{7,10}, tests, style, py3{8,10}, py3{9,10}"
 
 
-def test_add_numeric_option_to_envlist():
-    e = ToxEnvlist.parse("py3{9}")
-    result = e.add_numeric_option("py312")
-    assert str(result) == "py3{9,12}"
-
-    e = ToxEnvlist.parse("py3{9,10,11}, py3{9,10,11}t, style")
-    result = e.add_numeric_option("py312")
-    assert str(result) == "py3{9,10,11,12}, py3{9,10,11}t, style"
-
-    e = ToxEnvlist.parse("py3{9,10,11}, style")
-    result = e.add_numeric_option("py312t")
-    assert str(result) == "py3{9,10,11}, style, py312t"
-
-    e = ToxEnvlist.parse("py3{9,10,11},\npy3{9,10,11}t, style")
-    result = e.add_numeric_option("py312t")
-    assert str(result) == "\npy3{9,10,11}\npy3{9,10,11,12}t\nstyle"
-
-    e = ToxEnvlist.parse("py3{9,10}, style")
-    result = e.add_numeric_option("py311")
-    assert str(result) == "py3{9,10,11}, style"
-
-    e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, style")
-    result = e.add_numeric_option("py311")
-    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}, style"
-
-    e = ToxEnvlist.parse("py3{9,10}-django{5,6}-cov{6,7}, py3{9,10}-nocov, style")
-    result = e.add_numeric_option("py311")
-    assert str(result) == "py3{9,10,11}-django{5,6}-cov{6,7}, py3{9,10,11}-nocov, style"
-
-    e = ToxEnvlist.parse("py37,py310,linters")
-    result = e.add_numeric_option("py313")
-    assert str(result) == "py37,py310,linters,py313"
-
-    e = ToxEnvlist.parse("py3{6,10},py37,linters")
-    result = e.add_numeric_option("py313")
-    assert str(result) == "py3{6,10,13},py37,linters"
-
-    e = ToxEnvlist.parse("py37-fastapi, py38-fastapi")
-    result = e.add_numeric_option("py39")
-    assert str(result) == "py37-fastapi, py38-fastapi, py39"
-
-    e = ToxEnvlist.parse("py{37,38}-fastapi")
-    result = e.add_numeric_option("py39")
-    assert str(result) == "py{37,38,39}-fastapi"
-
-    e = ToxEnvlist.parse("py37-{fastapi,flask}")
-    result = e.add_numeric_option("py39")
-    assert str(result) == "py{37,39}-{fastapi,flask}"
+@pytest.mark.parametrize(
+    "envlist, option, expected",
+    [
+        ("py3{9}", "py312", "py3{9,12}"),
+        (
+            "py3{9,10,11}, py3{9,10,11}t, style",
+            "py312",
+            "py3{9,10,11,12}, py3{9,10,11}t, style",
+        ),
+        ("py3{9,10,11}, style", "py312t", "py3{9,10,11}, style, py312t"),
+        (
+            "py3{9,10,11},\npy3{9,10,11}t, style",
+            "py312t",
+            "\npy3{9,10,11}\npy3{9,10,11,12}t\nstyle",
+        ),
+        ("py3{9,10}, style", "py311", "py3{9,10,11}, style"),
+        (
+            "py3{9,10}-django{5,6}-cov{6,7}, style",
+            "py311",
+            "py3{9,10,11}-django{5,6}-cov{6,7}, style",
+        ),
+        (
+            "py3{9,10}-django{5,6}-cov{6,7}, py3{9,10}-nocov, style",
+            "py311",
+            "py3{9,10,11}-django{5,6}-cov{6,7}, py3{9,10,11}-nocov, style",
+        ),
+        ("py37,py310,linters", "py313", "py37,py310,linters,py313"),
+        ("py3{6,10},py37,linters", "py313", "py3{6,10,13},py37,linters"),
+        ("py37-fastapi, py38-fastapi", "py39", "py37-fastapi, py38-fastapi, py39"),
+        ("py{37,38}-fastapi", "py39", "py{37,38,39}-fastapi"),
+        ("py37-{fastapi,flask}", "py39", "py{37,39}-{fastapi,flask}"),
+    ],
+)
+def test_add_numeric_option_to_envlist(envlist, option, expected):
+    e = ToxEnvlist.parse(envlist)
+    result = e.add_numeric_option(option)
+    assert str(result) == expected
