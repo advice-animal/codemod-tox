@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Callable, Generator, Optional
 
@@ -8,6 +9,7 @@ from .env import ToxEnv
 from .exceptions import NoFactorMatch, NoMatch
 from .options import ToxOptions
 from .parse import TOX_ENV_TOKEN_RE
+from .utils import pre_num_suf
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,20 @@ class ToxEnvlist(ToxBase):
 
         return cls(tuple(pieces), separator=separator, leading_newline=leading_newline)
 
+    @staticmethod
+    def _after_numeric(envs: list[ToxEnv], value: str) -> int:
+        """
+        Index after the last env that looks like `value`: the same alphabetic
+        prefix followed by a digit.  The end of the list if none do.
+        """
+        if (pns := pre_num_suf(value)) is None:
+            return len(envs)
+        numeric = re.compile(re.escape(pns[0]) + r"\d")
+        for i in range(len(envs) - 1, -1, -1):
+            if any(numeric.match(name) for name in envs[i]):
+                return i + 1
+        return len(envs)
+
     def add_numeric_option(self, value: str) -> "ToxEnvlist":
         new_envs: list[ToxEnv] = []
         added = False
@@ -115,7 +131,7 @@ class ToxEnvlist(ToxBase):
             except NoFactorMatch:
                 new_envs.append(env)
         if not added:
-            new_envs.append(ToxEnv.parse(value))
+            new_envs.insert(self._after_numeric(new_envs, value), ToxEnv.parse(value))
         return self.__class__(tuple(new_envs), self.separator, self.leading_newline)
 
     def __str__(self) -> str:

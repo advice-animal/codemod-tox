@@ -40,6 +40,14 @@ This library follows [meanver](https://meanver.org/) which basically means
 [semver](https://semver.org/) along with a promise to rename when the major
 version changes.
 
+# Changelog
+
+## Unreleased
+
+`add_numeric_option` will now put the new option after other numeric options
+that have the same alphabetic prefix. This helps keep true test environments
+in the same execution position relative to combining environments like "coverage".
+
 # License
 
 codemod-tox is copyright [Tim Hatch](https://timhatch.com/), and licensed under
