@@ -88,7 +88,7 @@ def test_transform_matching_max():
             "py312",
             "py3{9,10,11,12}, py3{9,10,11}t, style",
         ),
-        ("py3{9,10,11}, style", "py312t", "py3{9,10,11}, style, py312t"),
+        ("py3{9,10,11}, style", "py312t", "py3{9,10,11}, py312t, style"),
         (
             "py3{9,10,11},\npy3{9,10,11}t, style",
             "py312t",
@@ -105,8 +105,8 @@ def test_transform_matching_max():
             "py311",
             "py3{9,10,11}-django{5,6}-cov{6,7}, py3{9,10,11}-nocov, style",
         ),
-        ("py37,py310,linters", "py313", "py37,py310,linters,py313"),
-        ("py3{6,10},py37,linters", "py313", "py3{6,10,13},py37,linters"),
+        ("first,py37,py310,coverage", "py313", "first,py37,py310,py313,coverage"),
+        ("create,py3{6,10},py37,linters", "py313", "create,py3{6,10,13},py37,linters"),
         ("py37-fastapi, py38-fastapi", "py39", "py37-fastapi, py38-fastapi, py39"),
         ("py{37,38}-fastapi", "py39", "py{37,38,39}-fastapi"),
         ("py37-{fastapi,flask}", "py39", "py{37,39}-{fastapi,flask}"),
@@ -115,6 +115,8 @@ def test_transform_matching_max():
             "py313",
             "py{38,39,310,311,312,313}{,-flask,-fastapi}, coverage, style",
         ),
+        ("first,second,last", "py310", "first,second,last,py310"),
+        ("first,second,last", "onemore", "first,second,last,onemore"),
     ],
 )
 def test_add_numeric_option_to_envlist(envlist, option, expected):
