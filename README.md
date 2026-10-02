@@ -52,3 +52,17 @@ in the same execution position relative to combining environments like "coverage
 
 codemod-tox is copyright [Tim Hatch](https://timhatch.com/), and licensed under
 the MIT license.  See the `LICENSE` file for details.
+
+# Maintenance
+
+## Running tests
+
+Create a venv with `make venv`, then activate the venv and use `make test`.
+
+## Publishing
+
+The library is published to PyPI with Trusted Publishing. To release the latest code:
+
+- Update the version and date in the changelog in README.md and commit the change.
+- Create and push a tag in the pattern `vM.m.p` like `v1.2.3`.
+- A GitHub action will publish to PyPI.
