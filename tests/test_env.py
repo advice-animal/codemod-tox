@@ -118,6 +118,10 @@ def test_add_numeric_option():
         str(ToxEnv.parse("py3{10,11}-py3{10,11}-py311").add_numeric_option("py312"))
         == "py3{10,11,12}-py3{10,11}-py311"
     )
+    assert (
+        str(ToxEnv.parse("py{39,310}t{,-foo}").add_numeric_option("py311t"))
+        == "py{39,310,311}t{,-foo}"
+    )
 
 
 def test_add_numeric_option_errors():
@@ -140,6 +144,9 @@ def test_add_numeric_option_errors():
     # Original values have non-numeric options
     with pytest.raises(NoFactorMatch):
         ToxEnv.parse("p{y39,x39}").add_numeric_option("py310")
+    # Literal after the options doesn't match the new value's suffix
+    with pytest.raises(NoFactorMatch):
+        ToxEnv.parse("py{39,310}t{,-foo}").add_numeric_option("py311")
     # The environment must have a prefix
     with pytest.raises(NoFactorMatch):
         ToxEnv.parse("py310").add_numeric_option("311")
