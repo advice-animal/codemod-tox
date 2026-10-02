@@ -42,7 +42,7 @@ version changes.
 
 # Changelog
 
-## Unreleased
+## v0.5.5 – 2026-10-02
 
 `add_numeric_option` will now put the new option after other numeric options
 that have the same alphabetic prefix. This helps keep true test environments
