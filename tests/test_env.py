@@ -122,6 +122,18 @@ def test_add_numeric_option():
         str(ToxEnv.parse("py{39,310}t{,-foo}").add_numeric_option("py311t"))
         == "py{39,310,311}t{,-foo}"
     )
+    assert (
+        str(ToxEnv.parse("{py37}-{main,flakey8}").add_numeric_option("py311"))
+        == "py3{7,11}-{main,flakey8}"
+    )
+    assert (
+        str(ToxEnv.parse("{py37,py38}-foo").add_numeric_option("py311"))
+        == "py{37,38,311}-foo"
+    )
+    assert (
+        str(ToxEnv.parse("{py37t}-foo").add_numeric_option("py311t"))
+        == "py{37,311}t-foo"
+    )
 
 
 def test_add_numeric_option_errors():

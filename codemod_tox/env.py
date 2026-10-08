@@ -192,17 +192,26 @@ class ToxEnv(ToxBase):
             return None
 
         # See if we can keep the original fixed part.
-        assert isinstance(self.pieces[0], str)
+        first = self.pieces[0]
+        if not isinstance(first, str):
+            # A single-option group like "{py37}" is effectively a fixed string,
+            # but only its first digit is worth keeping as the fixed part.
+            try:
+                first = first.one()
+            except ValueError:
+                first = ""
+            if (fpns := pre_num_suf(first)) is not None and not fpns[2]:
+                first = fpns[0] + fpns[1][:1]
         new_pre = vpre
         new_nums = sorted(enums, key=int)
-        if (pns := pre_num_suf(self.pieces[0])) is not None:
+        if (pns := pre_num_suf(first)) is not None:
             prefix_num = pns[1]
             # Look at the original prefix broken into pre/num/suf. "py3" is
             # nice to keep. `prefix_num` is the "3" in that case, so check if
             # it's just one character and is a valid prefix.
             if len(prefix_num) == 1 and all(n.startswith(prefix_num) for n in new_nums):
                 new_nums = [n[1:] for n in new_nums]
-                new_pre = self.pieces[0]
+                new_pre = first
 
         nums = ToxOptions(tuple(new_nums))
         pieces: list[ToxOptions | str] = [x for x in (new_pre, nums, vsuf) if x]  # type: ignore
