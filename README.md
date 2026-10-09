@@ -42,11 +42,11 @@ version changes.
 
 # Changelog
 
-## Unreleased
+## v0.5.6 - 2026-10-09
 
 A single-valued factor like `{py312}` used to cause an assert. This is now fixed.
 
-## v0.5.5 – 2026-10-02
+## v0.5.5 - 2026-10-02
 
 `add_numeric_option` will now put the new option after other numeric options
 that have the same alphabetic prefix. This helps keep true test environments
